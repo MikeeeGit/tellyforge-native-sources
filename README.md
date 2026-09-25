@@ -38,7 +38,15 @@ to mpv's version string, incrementally recompiles with two workers, and confirms
 that the DLL hash changed and the public libmpv API returns that exact marker.
 The normal official release validators continue to reject this modified DLL.
 The API probe uses null audio/video outputs, no user configuration and an explicit
-library path. It does not play media or render a TellyForge window.
+library path. Each probe receives a fresh directory containing only its libmpv
+output and the newly built `libEGL.dll`, `libGLESv2.dll` and `z.dll`. These files
+are checked against the reviewed runtime manifest before and after copying;
+only the deliberately modified libmpv uses its newly measured hash. There is no
+fallback to installed DLLs or machine caches. The probe loads dependency-first
+by absolute path, restricts dependent-library searching to that directory and
+Windows System32, and checks every actual loaded native module path. The receipt
+records all four file hashes and loaded paths for both probes. It does not play
+media, invoke the Direct3D shader compiler, or render a TellyForge window.
 
 Only `windows-native-qualification.json` is uploaded as a workflow artifact.
 Native binaries, source trees, build directories and credentials are not uploaded.
@@ -53,7 +61,10 @@ proof cannot be replaced by this probe or by green CI.
 Run `./scripts/Test-SourceArchive.ps1` with Windows PowerShell 5.1. These synthetic
 fixtures exercise allowed content, hash mismatch, missing/extra files, traversal,
 duplicate paths, links, empty entries and expansion limits without downloading or
-compiling native software. The orchestration script refuses accidental execution
+compiling native software. `./scripts/Test-NativeProbeBundle.ps1` checks dependency
+staging, corruption, missing/duplicate records, size mismatches and separation of
+official dependencies from a deliberately modified libmpv without executing any
+DLL. The orchestration script refuses accidental execution
 outside this repository's GitHub-hosted Windows job.
 
 The workflow must be reviewed before publication or dispatch. Its first native

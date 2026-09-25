@@ -16,6 +16,7 @@ if ($env:GITHUB_ACTIONS -cne 'true' -or $env:RUNNER_ENVIRONMENT -cne 'github-hos
     throw 'This qualification script runs only on this public repository''s GitHub-hosted Windows job.'
 }
 Import-Module (Join-Path $PSScriptRoot 'SourceArchive.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'NativeProbeBundle.psm1') -Force
 $uri = Get-WindowsSourceAssetUri -ReleaseTag $ReleaseTag -AssetName $AssetName
 $work = 'C:\tfnq'
 if (Test-Path -LiteralPath $work) { throw 'Refusing to reuse an existing native qualification workspace.' }
@@ -77,7 +78,13 @@ try {
     $library = Join-Path $libmpv 'libmpv-2.dll'
     $receipt.officialNativeHashesVerified = $true
     $receipt.officialLibmpvSha256 = (Get-FileHash -LiteralPath $library -Algorithm SHA256).Hash.ToLowerInvariant()
-    $receipt.officialMpvVersion = & (Join-Path $PSScriptRoot 'Read-LibmpvVersion.ps1') -LibraryPath $library
+    $officialBundle = New-NativeProbeBundle -LibraryPath $library -AngleInstallRoot $angle `
+        -RuntimeManifestPath (Join-Path $root 'native-runtime.json') `
+        -Destination (Join-Path $work 'probe-official')
+    $receipt.officialProbeFiles = @($officialBundle.files)
+    $officialProbe = & (Join-Path $PSScriptRoot 'Read-LibmpvVersion.ps1') -LibraryPath $officialBundle.libraryPath
+    $receipt.officialMpvVersion = $officialProbe.version
+    $receipt.officialLoadedModulePaths = @($officialProbe.loadedModulePaths)
     if ([string]$receipt.officialMpvVersion -notmatch '^mpv ' -or
         [string]$receipt.officialMpvVersion -match 'personal-modification') {
         throw 'The unchanged library returned an unexpected version.'
@@ -102,7 +109,14 @@ try {
     if ($receipt.modifiedLibmpvSha256 -ceq $receipt.officialLibmpvSha256) {
         throw 'The source modification did not change the compiled library.'
     }
-    $receipt.modifiedMpvVersion = & (Join-Path $PSScriptRoot 'Read-LibmpvVersion.ps1') -LibraryPath $library
+    $modifiedBundle = New-NativeProbeBundle -LibraryPath $library -AngleInstallRoot $angle `
+        -RuntimeManifestPath (Join-Path $root 'native-runtime.json') `
+        -Destination (Join-Path $work 'probe-modified') `
+        -ModifiedLibrarySha256 $receipt.modifiedLibmpvSha256
+    $receipt.modifiedProbeFiles = @($modifiedBundle.files)
+    $modifiedProbe = & (Join-Path $PSScriptRoot 'Read-LibmpvVersion.ps1') -LibraryPath $modifiedBundle.libraryPath
+    $receipt.modifiedMpvVersion = $modifiedProbe.version
+    $receipt.modifiedLoadedModulePaths = @($modifiedProbe.loadedModulePaths)
     if ([string]$receipt.modifiedMpvVersion -cne ([string]$receipt.officialMpvVersion + ' personal-modification')) {
         throw 'The loaded replacement library did not report the exact modification marker.'
     }

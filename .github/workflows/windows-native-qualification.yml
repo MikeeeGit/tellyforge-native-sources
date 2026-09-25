@@ -38,8 +38,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Check source boundary fixtures
-        run: ./scripts/Test-SourceArchive.ps1
+      - name: Check source boundary and native bundle fixtures
+        run: |
+          ./scripts/Test-SourceArchive.ps1
+          ./scripts/Test-NativeProbeBundle.ps1
       - name: Rebuild reviewed native source and test modification
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
