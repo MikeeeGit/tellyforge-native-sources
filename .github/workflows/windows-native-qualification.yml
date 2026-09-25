@@ -1,0 +1,60 @@
+name: Windows native source qualification
+
+# Manual only: review the public archive and SHA before starting a free hosted
+# runner. No application repository, secrets, signing or Store APIs are used.
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact stable public source release tag, such as v1.0.0
+        required: true
+        type: string
+      source_asset_name:
+        description: Exact Windows native corresponding-source ZIP asset name
+        required: true
+        type: string
+      source_sha256:
+        description: SHA-256 of the reviewed source-only ZIP
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-native-source-qualification
+  cancel-in-progress: false
+
+jobs:
+  native:
+    name: Rebuild and modify native library
+    if: github.repository == 'MikeeeGit/tellyforge-native-sources'
+    runs-on: windows-2022
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check source boundary fixtures
+        run: ./scripts/Test-SourceArchive.ps1
+      - name: Rebuild reviewed native source and test modification
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SOURCE_ASSET_NAME: ${{ inputs.source_asset_name }}
+          SOURCE_SHA256: ${{ inputs.source_sha256 }}
+        run: |
+          ./scripts/Invoke-WindowsNativeQualification.ps1 `
+            -ReleaseTag $env:RELEASE_TAG `
+            -AssetName $env:SOURCE_ASSET_NAME `
+            -SourceSha256 $env:SOURCE_SHA256
+      - name: Retain native qualification receipt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-native-qualification-${{ github.run_id }}
+          path: qualification/windows-native-qualification.json
+          if-no-files-found: warn
+          retention-days: 30
