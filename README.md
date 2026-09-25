@@ -7,9 +7,12 @@ playlists. Release archives preserve the upstream component licences.
 
 ## Windows native qualification
 
-The manual `Windows native source qualification` workflow accepts an exact stable
-release tag, its Windows corresponding-source asset name and a separately reviewed
-SHA-256. It downloads only from this repository's public release assets. The ZIP
+The manual `Windows native source qualification` workflow accepts an exact release
+tag, including a GitVersion prerelease such as `v1.1.0-alpha.612`, its matching
+Windows corresponding-source asset name and a separately reviewed SHA-256. The
+asset filename must preserve the complete version, including the prerelease
+suffix. Core versions below `1.0.0`, build metadata and tag/path aliases remain
+rejected. It downloads only from this repository's public release assets. The ZIP
 must match that hash and the explicit 63-file native source allowlist before any
 archived build script is run. A new archive layout needs a reviewed allowlist
 change; application Dart files, executables, DLLs and private inventories are
@@ -66,6 +69,11 @@ staging, corruption, missing/duplicate records, size mismatches and separation o
 official dependencies from a deliberately modified libmpv without executing any
 DLL. The orchestration script refuses accidental execution
 outside this repository's GitHub-hosted Windows job.
+
+Tag fixtures accept exact stable and prerelease identities while rejecting
+malformed SemVer identifiers, case or version mismatches, path traversal and
+filenames that discard the prerelease suffix. Tag support does not change the
+reviewed archive hash or native-only content requirements.
 
 The workflow must be reviewed before publication or dispatch. Its first native
 run remains pending: a source archive for the exact merged application release

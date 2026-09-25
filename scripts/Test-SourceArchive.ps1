@@ -50,11 +50,28 @@ function Assert-BadFixture {
 try {
     $uri = Get-WindowsSourceAssetUri -ReleaseTag 'v1.0.0' -AssetName 'TellyForge-1.0.0-windows-x64-native-corresponding-source.zip'
     Assert-True ($uri -ceq 'https://github.com/MikeeeGit/tellyforge-native-sources/releases/download/v1.0.0/TellyForge-1.0.0-windows-x64-native-corresponding-source.zip') 'Fixed public source repository URL.'
-    foreach ($tag in @('main', 'v0.9.0', 'v1.0.0-rc.1', 'v1.0.0/../x', 'v01.0.0', 'v1.0.0+1', 'https://example.com')) {
-        Assert-Throws { Get-WindowsSourceAssetUri -ReleaseTag $tag -AssetName 'source.zip' } 'stable release tag'
+    $alphaUri = Get-WindowsSourceAssetUri -ReleaseTag 'v1.1.0-alpha.612' -AssetName 'TellyForge-1.1.0-alpha.612-windows-x64-native-corresponding-source.zip'
+    Assert-True ($alphaUri -ceq 'https://github.com/MikeeeGit/tellyforge-native-sources/releases/download/v1.1.0-alpha.612/TellyForge-1.1.0-alpha.612-windows-x64-native-corresponding-source.zip') 'Prerelease source URL preserves the exact GitVersion tag and asset suffix.'
+    foreach ($tag in @('v1.0.0-rc.1', 'v1.1.0-alpha.0', 'v1.1.0-beta-2.3', 'v1.1.0-0', 'v1.1.0-01alpha')) {
+        $asset = "TellyForge-$($tag.Substring(1))-windows-x64-native-corresponding-source.zip"
+        $accepted = Get-WindowsSourceAssetUri -ReleaseTag $tag -AssetName $asset
+        Assert-True ($accepted.EndsWith("/$tag/$asset", [StringComparison]::Ordinal)) 'Valid SemVer prerelease identifiers remain exact.'
     }
-    Assert-Throws { Get-WindowsSourceAssetUri -ReleaseTag 'v1.0.0' -AssetName 'TellyForge-1.0.1-windows-x64-native-corresponding-source.zip' } 'exact stable tag'
-    Assert-Throws { Get-WindowsSourceAssetUri -ReleaseTag 'v1.0.0' -AssetName '../source.zip' } 'exact stable tag'
+    foreach ($tag in @('main', 'v0.9.0', 'v0.9.0-alpha.1', 'v1.0.0/../x', 'v01.0.0',
+            'v1.0.0+1', 'v1.1.0-alpha.1+build.2', 'https://example.com', 'V1.1.0-alpha.1',
+            'v1.1.0-', 'v1.1.0-alpha..1', 'v1.1.0-01', 'v1.1.0-alpha.01',
+            'v1.1.0-alpha/1', 'v1.1.0-alpha\1', 'v1.1.0-alpha.1?raw=1', 'v1.1.0-alpha.1#fragment',
+            'v1.1.0-alpha_1', 'v1.1.0-alpha.1 ', "v1.1.0-alpha.1`n")) {
+        Assert-Throws { Get-WindowsSourceAssetUri -ReleaseTag $tag -AssetName 'source.zip' } 'exact release tag'
+    }
+    Assert-Throws { Get-WindowsSourceAssetUri -ReleaseTag 'v1.0.0' -AssetName 'TellyForge-1.0.1-windows-x64-native-corresponding-source.zip' } 'exact release tag'
+    Assert-Throws { Get-WindowsSourceAssetUri -ReleaseTag 'v1.0.0' -AssetName '../source.zip' } 'exact release tag'
+    foreach ($asset in @('TellyForge-1.1.0-windows-x64-native-corresponding-source.zip',
+            'TellyForge-1.1.0-alpha.613-windows-x64-native-corresponding-source.zip',
+            'TellyForge-1.1.0-Alpha.612-windows-x64-native-corresponding-source.zip',
+            '../TellyForge-1.1.0-alpha.612-windows-x64-native-corresponding-source.zip')) {
+        Assert-Throws { Get-WindowsSourceAssetUri -ReleaseTag 'v1.1.0-alpha.612' -AssetName $asset } 'exact release tag'
+    }
 
     $valid = New-SourceFixture
     $hash = (Get-FileHash -LiteralPath $valid -Algorithm SHA256).Hash

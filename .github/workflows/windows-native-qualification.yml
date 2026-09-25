@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Exact stable public source release tag, such as v1.0.0
+        description: Exact public source release tag, such as v1.0.0 or v1.1.0-alpha.612
         required: true
         type: string
       source_asset_name:

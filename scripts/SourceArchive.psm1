@@ -11,12 +11,16 @@ function Get-WindowsSourceAssetUri {
         [Parameter(Mandatory)][string]$AssetName
     )
 
-    if ($ReleaseTag -cnotmatch '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' -or
-        [version]$ReleaseTag.Substring(1) -lt [version]'1.0.0') {
-        throw 'A stable release tag of v1.0.0 or later is required.'
+    $number = '(?:0|[1-9][0-9]*)'
+    $identifier = '(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
+    $pattern = '\Av(?<core>' + $number + '\.' + $number + '\.' + $number + ')' +
+        '(?:-' + $identifier + '(?:\.' + $identifier + ')*)?\z'
+    $tag = [regex]::Match($ReleaseTag, $pattern)
+    if (-not $tag.Success -or [version]$tag.Groups['core'].Value -lt [version]'1.0.0') {
+        throw 'An exact release tag with core version v1.0.0 or later is required.'
     }
     $expected = "TellyForge-$($ReleaseTag.Substring(1))-windows-x64-native-corresponding-source.zip"
-    if ($AssetName -cne $expected) { throw 'Source asset name must match the exact stable tag.' }
+    if ($AssetName -cne $expected) { throw 'Source asset name must match the exact release tag.' }
     return "https://github.com/MikeeeGit/tellyforge-native-sources/releases/download/$ReleaseTag/$AssetName"
 }
 
